@@ -10,30 +10,35 @@ def load_model():
     try:
         with open('high_recall_agriculture_model.pkl', 'rb') as f:
             model = pickle.load(f)
+        print("模型加载成功")
         return model
     except Exception as e:
         print(f"模型加载错误: {e}")
         return None
 
+# 在应用启动时加载模型
 model = load_model()
 
 @app.route('/')
-def index():
+def home():
     return render_template('index.html')
 
 @app.route('/predict', methods=['POST'])
 def predict():
     if model is None:
-        return jsonify({'error': '模型未正确加载'})
+        return jsonify({'error': '模型未正确加载'}), 500
     
     try:
         # 获取前端数据
-        data = request.json
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': '没有接收到数据'}), 400
+            
         features = [
-            float(data['temperature']),
-            float(data['humidity']),
-            float(data['rainfall']),
-            float(data['soil_ph'])
+            float(data.get('temperature', 0)),
+            float(data.get('humidity', 0)),
+            float(data.get('rainfall', 0)),
+            float(data.get('soil_ph', 0))
         ]
         
         # 转换为模型输入格式
@@ -46,11 +51,19 @@ def predict():
         return jsonify({
             'prediction': int(prediction),
             'probability': float(probability[1]),  # 正类概率
-            'features_used': ['temperature', 'humidity', 'rainfall', 'soil_ph']
+            'confidence': f"{probability[1]*100:.2f}%",
+            'status': 'success'
         })
         
     except Exception as e:
-        return jsonify({'error': f'预测错误: {str(e)}'})
+        return jsonify({'error': f'预测错误: {str(e)}'}), 500
+
+@app.route('/health')
+def health_check():
+    return jsonify({
+        'status': 'healthy',
+        'model_loaded': model is not None
+    })
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

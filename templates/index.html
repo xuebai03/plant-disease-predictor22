@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>农业高召回率预测模型</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            display: none;
+        }
+        .success {
+            background-color: #e8f5e8;
+            border: 1px solid #4CAF50;
+            color: #2e7d32;
+        }
+        .error {
+            background-color: #ffe8e8;
+            border: 1px solid #f44336;
+            color: #c62828;
+        }
+        .loading {
+            text-align: center;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌱 农业高召回率预测模型</h1>
+        <p>请输入以下农业环境参数进行预测：</p>
+        
+        <form id="prediction-form">
+            <div class="form-group">
+                <label for="temperature">温度 (°C):</label>
+                <input type="number" step="0.1" id="temperature" name="temperature" required placeholder="例如: 25.5">
+            </div>
+            
+            <div class="form-group">
+                <label for="humidity">湿度 (%):</label>
+                <input type="number" step="0.1" id="humidity" name="humidity" required placeholder="例如: 65.0">
+            </div>
+            
+            <div class="form-group">
+                <label for="rainfall">降雨量 (mm):</label>
+                <input type="number" step="0.1" id="rainfall" name="rainfall" required placeholder="例如: 120.5">
+            </div>
+            
+            <div class="form-group">
+                <label for="soil_ph">土壤 pH:</label>
+                <input type="number" step="0.1" id="soil_ph" name="soil_ph" required placeholder="例如: 6.5">
+            </div>
+            
+            <button type="submit" id="submit-btn">开始预测</button>
+        </form>
+        
+        <div id="loading" class="loading" style="display: none;">
+            <p>正在分析数据，请稍候...</p>
+        </div>
+        
+        <div id="result" class="result">
+            <h3>📊 预测结果</h3>
+            <p id="prediction-text"></p>
+            <p id="probability-text"></p>
+        </div>
+        
+        <div id="error" class="result error">
+            <h3>❌ 错误</h3>
+            <p id="error-message"></p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('prediction-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // 显示加载中，禁用按钮
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('submit-btn').disabled = true;
+            
+            const formData = {
+                temperature: document.getElementById('temperature').value,
+                humidity: document.getElementById('humidity').value,
+                rainfall: document.getElementById('rainfall').value,
+                soil_ph: document.getElementById('soil_ph').value
+            };
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                // 隐藏加载中
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('submit-btn').disabled = false;
+                
+                if (!response.ok) {
+                    throw new Error(result.error || '请求失败');
+                }
+                
+                if (result.error) {
+                    document.getElementById('error-message').textContent = result.error;
+                    document.getElementById('error').style.display = 'block';
+                } else {
+                    const predictionText = result.prediction === 1 ? '正类 (适宜)' : '负类 (不适宜)';
+                    document.getElementById('prediction-text').textContent = `预测类别: ${predictionText}`;
+                    document.getElementById('probability-text').textContent = `置信度: ${result.confidence}`;
+                    document.getElementById('result').className = 'result success';
+                    document.getElementById('result').style.display = 'block';
+                }
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('submit-btn').disabled = false;
+                document.getElementById('error-message').textContent = '网络错误: ' + error.message;
+                document.getElementById('error').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
